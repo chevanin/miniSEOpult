@@ -17,16 +17,16 @@ $SymbolsOnPageCountLimit = 1000;
 // Параметры подключения к sape.ru
 $sape_host = "api.sape.ru";
 $sape_location = "/xmlrpc/?v=extended";
-$sape_login = "etorg3";
-$sape_password = "globalbus";
+$sape_login = "...";
+$sape_password = "...";
 $sape_status = "WAIT_SEO";
 
 // Параметры для подключения к seolib
-$seolib_login = "gbgroup";
-$seolib_password = "WY32olA8fp";
+$seolib_login = "...";
+$seolib_password = "...";
 
 // Параметры для подключения к seomoz.com
-$seomoz_access_id = "member-fc82b2bdc5";
-$seomoz_secret_key = "12105e69358c3ec4011924e1db2294a7";
+$seomoz_access_id = "...";
+$seomoz_secret_key = "...";
 
 
