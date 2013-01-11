@@ -16,6 +16,9 @@ ini_set("pcre.backtrack_limit",10000000);
 * @package SAPE
 *
 * @todo сделать -h с описанием ключей и значений и примером
+* @todo по всем фильтрам - в случае ошибок необходимо считать эту ссылку непрошедшей, но писать об этом в репорт - далее сделать отдельный репорт для ошибок
+* @todo seolib сделать последним (платно)
+* @todo описать все классы и методы phpdoc
 */
 
 
@@ -43,14 +46,16 @@ require_once "Storage.class.php";
 
 
 $argv = array();
-//$argv[] = "-s";
+$argv[] = "-s";
 //$argv[] = "1";
 //$argv[] = "2";
 //$argv[] = "3";
-//$argv[] = "4";
+//$argv[] = "4"; // liveinternet - если сайт не зарегистрирован в системе, то пропускаем
 //$argv[] = "5";
-//$argv[] = "6";
+//$argv[] = "6"; // report
 //$argv[] = "7"; // black list
+//$argv[] = "8"; // seolib
+$argv[] = "9"; // mozrank
 
 $argv[] = "-p";
 $argv[] = "105199";
@@ -61,7 +66,7 @@ if( !in_array( "-p", $argv ) || !isset( $argv[array_search( "-p", $argv )+1] ) )
 $PROJECT_ID = $argv[array_search( "-p", $argv )+1];
 
 if( !in_array( "-s", $argv ) || in_array( "1", $argv ) ) {
-    // Получаем ссылки для филтрации
+    // Получаем ссылки для фильтрации
     list( $Links, $NestingArray ) = LinksLoader::Get($PROJECT_ID);
 } else {
     $Links = array();
@@ -70,6 +75,8 @@ if( !in_array( "-s", $argv ) || in_array( "1", $argv ) ) {
 
 $Storage = new Storage( $PROJECT_ID, $Links, $NestingArray );
 list( $TrustedLinks, $NestingArray, $UnTrustedLinks, $UnTrustedLinksIDs, $UnTrustedLinksReasons ) = $Storage->GetDatas();
+
+$ErrorLinksIDs = array();
 
 // Фильтрация ссылок по black list
 /**
@@ -91,22 +98,110 @@ if( !in_array( "-s", $argv ) || in_array( "2", $argv ) ) {
 // Фильтрация ссылок по посещаемости за месяц по LiveInternet
 // Common.config.php - общий конфиг, где всякие пределы (в том числе LiveInternet)
 if( !in_array( "-s", $argv ) || in_array( "4", $argv ) ) {
-    list( $TrustedLinks, $UnTrustedLinks[2], $UnTrustedLinksIDs[2], $UnTrustedLinksReasons[2] ) = LinksFilter::FilterLiveInternet( $TrustedLinks );
-    $Storage->UnTrust(2, $UnTrustedLinksIDs[2], $UnTrustedLinksReasons[2]);
+    list( $TrustedLinks, $UnTrustedLinks[2], $UnTrustedLinksIDs[2], $UnTrustedLinksReasons[2], $ErrorLinksIDs[2] ) = LinksFilter::FilterLiveInternet( $TrustedLinks );
+    $Storage->UnTrust(2, $UnTrustedLinksIDs[2], $UnTrustedLinksReasons[2], true);
+    /*
+    echo "<pre>";
+    var_dump( $TrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinksReasons );
+    echo "<hr>";
+    var_dump( $ErrorLinksIDs );
+    echo "<hr>";
+    echo "</pre>";
+    */
 } // End if
 
 // Фильтрация ссылок с помощью показателя популярности alexa
 // Common.config.php - общий конфиг, где всякие пределы (в том числе alexa)
 if( !in_array( "-s", $argv ) || in_array( "3", $argv ) ) {
-    list( $TrustedLinks, $UnTrustedLinks[1], $UnTrustedLinksIDs[1], $UnTrustedLinksReasons[1] ) = LinksFilter::FilterAlexa( $TrustedLinks );
-    $Storage->UnTrust(1, $UnTrustedLinksIDs[1], $UnTrustedLinksReasons[1]);
+    list( $TrustedLinks, $UnTrustedLinks[1], $UnTrustedLinksIDs[1], $UnTrustedLinksReasons[1], $ErrorLinksIDs[1] ) = LinksFilter::FilterAlexa( $TrustedLinks );
+    $Storage->UnTrust(1, $UnTrustedLinksIDs[1], $UnTrustedLinksReasons[1], true);
+    
+    /*
+    echo "<pre>";
+    var_dump( $TrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinksReasons );
+    echo "<hr>";
+    var_dump( $ErrorLinksIDs );
+    echo "<hr>";
+    echo "</pre>";
+    */
+    
 } // End if
 
 // Фильтрация ссылок по свойствам страницы (кол-во ссылок, 200 OK, кол-во символов текста )
 // Common.config.php - общий конфиг, где всякие пределы (кол-во символов текста, кол-во ссылок)
 if( !in_array( "-s", $argv ) || in_array( "5", $argv ) ) {
-    list( $TrustedLinks, $UnTrustedLinks[3], $UnTrustedLinksIDs[3], $UnTrustedLinksReasons[3] ) = PageFilter::FilterLinksCount( $TrustedLinks, $NestingArray );
+    //list( $TrustedLinks, $UnTrustedLinks[3], $UnTrustedLinksIDs[3], $UnTrustedLinksReasons[3] ) = PageFilter::FilterLinksCount( $TrustedLinks, $NestingArray );
+    list( $TrustedLinks, $UnTrustedLinks[3], $UnTrustedLinksIDs[3], $UnTrustedLinksReasons[3], $ErrorLinksIDs[3] ) = LinksFilter::FilterAlexa( $TrustedLinks );
+    
+    echo "<pre>";
+    var_dump( $TrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinksReasons );
+    echo "<hr>";
+    var_dump( $ErrorLinksIDs );
+    echo "<hr>";
+    echo "</pre>";
+    
     $Storage->UnTrust(3, $UnTrustedLinksIDs[3], $UnTrustedLinksReasons[3]);
+} // End if
+
+
+// Фильтрация ссылок с помощью seolib
+if( !in_array( "-s", $argv ) || in_array( "8", $argv ) ) {
+    list( $TrustedLinks, $UnTrustedLinks[5], $UnTrustedLinksIDs[5], $UnTrustedLinksReasons[5], $ErrorLinksIDs[5] ) = LinksFilter::FilterSEOLib( $TrustedLinks );
+
+/*
+    list( $TrustedLinks, $UnTrustedLinks[1], $UnTrustedLinksIDs[1], $UnTrustedLinksReasons[1], $ErrorLinksIDs[1] ) = LinksFilter::FilterAlexa( $TrustedLinks );
+    $Storage->UnTrust(1, $UnTrustedLinksIDs[1], $UnTrustedLinksReasons[1], true);
+
+*/    
+/*
+    echo "<pre>";
+    var_dump( $TrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinksReasons );
+    echo "<hr>";
+    var_dump( $ErrorLinksIDs );
+    echo "<hr>";
+    echo "</pre>";
+*/
+    
+    $Storage->UnTrust(5, $UnTrustedLinksIDs[5], $UnTrustedLinksReasons[5], true);
+} // End if
+
+
+// Фильтрация ссылок с помощью Мозранк
+if( !in_array( "-s", $argv ) || in_array( "9", $argv ) ) {
+    list( $TrustedLinks, $UnTrustedLinks[6], $UnTrustedLinksIDs[6], $UnTrustedLinksReasons[6], $ErrorLinksIDs[6] ) = LinksFilter::FilterMozrank( $TrustedLinks );
+/*
+    list( $TrustedLinks, $UnTrustedLinks[1], $UnTrustedLinksIDs[1], $UnTrustedLinksReasons[1], $ErrorLinksIDs[1] ) = LinksFilter::FilterAlexa( $TrustedLinks );
+    $Storage->UnTrust(1, $UnTrustedLinksIDs[1], $UnTrustedLinksReasons[1], true);
+
+
+*/
+    echo "<pre>";
+    var_dump( $TrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinksReasons );
+    echo "<hr>";
+    var_dump( $ErrorLinksIDs );
+    echo "<hr>";
+    echo "</pre>";
+    $Storage->UnTrust(6, $UnTrustedLinksIDs[6], $UnTrustedLinksReasons[6], true);
 } // End if
 
 
@@ -131,28 +226,33 @@ if( !in_array( "-s", $argv ) || in_array( "6", $argv ) ) {
 
     // Гененрируем отчет
     $Report = new Report( $PROJECT_ID );
+    
+    // Помечаем ошибки при проверках для исключения их из BL
+    $Storage->MarkErrors($ErrorLinksIDs);
+    
+    
 
-    list( $StorageTrustedLinks, $StorageUnTrustedLinks ) = $Storage->GetReport();
+    list( $StorageTrustedLinks, $StorageUnTrustedLinksAPI, $StorageUnTrustedLinks ) = $Storage->GetReport();
+    /*
+    echo "<pre>";
+    var_dump( $StorageTrustedLinks );
+    echo "<hr>";
+    var_dump( $StorageUnTrustedLinksAPI );
+    echo "<hr>";
+    var_dump( $StorageUnTrustedLinks );
+    echo "<hr>";
+    echo "</pre>";
+    */
     $Report->GenerateCSV( $StorageTrustedLinks, array( "URL", "Уровень" ), "trusted_" . date("d-m-Y") . ".csv" );
-    $Report->GenerateCSV( $StorageUnTrustedLinks, array( "URL", "Уровень", "Причина отклонения" ), "untrusted_" . date("d-m-Y") . ".csv" );
+    $Report->GenerateCSV( $StorageUnTrustedLinksAPI, array( "URL", "Уровень", "Причина отклонения" ), "API_untrusted_" . date("d-m-Y") . ".csv" );
+    $Report->GenerateCSV( $StorageUnTrustedLinks, array( "URL", "Уровень", "Причина отклонения" ), "ACCESS_untrusted_" . date("d-m-Y") . ".csv" );
 
     $Report->Send();
+    
+    
 
 } // End if
 
-/*
 
-проверка на 200 OK
-
-    Скрипт коннектится к API Sape и получает материал для работы.
-
-    Парсим оставшиеся страницы и ищем совпадения со стоп-словами (примеры отсылал), считаем количество внешних и внутренних ссылок на странице, считаем количество текстового контента на странице. Фильтруем страницы, где встретилось совпадение из списка стоп-слов, где объём чистого текстового контента менее некого порога (сейчас - 1000 символов чистого текста, без учёта текстов ссылок), зачищаем страницы, где количество либо внешних, либо внутренних ссылок превышает установленные значения (в идеале значения отличаются для разных уровней страниц). Ссылки, закрытые в noindex не учитываем.
-    Коннектимся к API Seolib http://www.seolib.ru/script/xmlrpc/ отправляем оставшиеся ссылки на проверку: индексация в Яндексе, индексация в Google, фильтр АГС-17 и фильтр в Яндексе.
-    В октябре сервис Solomono по инсайдерской информации планирует выпустить свой API, надо будет подключить его. Если не выпустит паблик, с ним можно договориться в частном порядке.
-    В Solomono получаем информацию об исходящих ссылках с домена. Если количество исходящих ссылок превышает количество страниц в индексе Яндекса в определённое количество раз, то донора стоит отсеять.
-    После этого просеиваем все исходящие ссылки с домена по стоп-словам (порно, варез, курительные смеси, дипломы-больничные ну и прочий шлак, который портит карму).
-    В 10-00 скрипт кидает на почту 2 файла: зафильтрованные ссылки и отфильтрованные ссылки. Если у нашего аккаунта есть возможность (она не всем доступна), то зафильтрованные можно будет сразу через API добавить в BL.
-
-*/
 
 ?>

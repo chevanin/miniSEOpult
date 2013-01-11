@@ -1,4 +1,5 @@
 <?php
+// дл€ URL-ов
 $RegexFilterArray = array(
 	"board",
 	"(php|ya|fast)bb",
@@ -16,3 +17,11 @@ $RegexFilterArray = array(
 	"gbook",
 	"thread\.php",
 );
+
+// —топ-слова дл€ текста и ссылок
+$StopWordsMasks = array(
+    "порн(о|уха)",
+);
+
+// ƒопустимое кол-во стоп-слов в тексте
+$MaxAvailCountInText = 1;

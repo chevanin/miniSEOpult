@@ -27,6 +27,12 @@ class Storage {
     */
     protected $Links = array();
     /**
+    * Массив ID-ов ссылок, при проверке которых возникли ошибки
+    * @access protected
+    * @var array
+    */
+    protected $ErrorLinksIDs = array();
+    /**
     * Массив уровней вложенности ссылок
     * @access protected
     * @var array
@@ -247,14 +253,22 @@ class Storage {
     * @param integer $Step шаг, на котором "отвалились" ссылки
     * @param array $UnTrustedLinksIDs массив ID-ов "отвалившихся" ссылок
     * @param array $UnTrustedLinksReasons причина отказа
+    * @param bool $APILog если флаг установлен в true, то ставится пометка об отправке в лог API
     * @return void
     */
-    function UnTrust( $Step, $UnTrustedLinksIDs, $UnTrustedLinksReasons ) {
+    function UnTrust( $Step, $UnTrustedLinksIDs, $UnTrustedLinksReasons, $APILog = false ) {
         
-        $insert_untrasted_q = "
-            INSERT INTO links_untrasted ( link_id, step, reason ) VALUES ( ?, ?, ? ) 
-            ON DUPLICATE KEY UPDATE step = ?, reason = ?
-        ";
+        if( $APILog ) {
+            $insert_untrasted_q = "
+                INSERT INTO links_untrasted ( link_id, step, reason, api_log ) VALUES ( ?, ?, ?, 'Y' ) 
+                ON DUPLICATE KEY UPDATE step = ?, reason = ?
+            ";
+        } else {
+            $insert_untrasted_q = "
+                INSERT INTO links_untrasted ( link_id, step, reason ) VALUES ( ?, ?, ? ) 
+                ON DUPLICATE KEY UPDATE step = ?, reason = ?, api_log = 'N'
+            ";
+        } // End if
         
         $update_links_q = "
             UPDATE links_to_filter SET is_filtered = 'Y', is_good = 'N' WHERE id = ?
@@ -265,11 +279,13 @@ class Storage {
             foreach( $UnTrustedLinksIDs as $ID ) {
             
                 $Reason = ( isset( $UnTrustedLinksReasons[$ID] ) ) ? $UnTrustedLinksReasons[$ID] : "";
+                
                 $iu_s->bind_param( 'iisis', $ID, $Step, $Reason, $Step, $Reason );
                 $iu_s->execute();
                 
                 $ul_s->bind_param( 'i', $ID );
                 $ul_s->execute();
+                
                 
             } // End ofreach
             
@@ -282,28 +298,59 @@ class Storage {
     
     
     /**
-    * Получение данных для генерации отчета
+    * Помечаем ошибки при проверках для исключения их из BL
     * Вызывается из index.php
     * Пример использования (index.php)
     * <code>
-    *   list( $StorageTrustedLinks, $StorageUnTrustedLinks ) = $Storage->GetReport();
+    *   $Storage->MarkErrors($ErrorLinksIDs);
     * </code>
     *
     * @access public
     *
     * @example index.php Пример использования в index.php
     *
-    * @return array Массив ( $StorageTrustedLinks, $StorageUnTrustedLinks ), $StorageTrustedLinks - прошедшие фильтр ссылки, $StorageUnTrustedLinks - непрошедшие фильтр ссылки с указанием причины отказа
+    * @param array $ErrorLinksIDs массив ID-ов ссылок, при генерации которых произошли ошибки
+    */
+    function MarkErrors( $ErrorLinksIDs ) {
+    
+        foreach( $ErrorLinksIDs as $step => $IDs ) {
+            foreach( $IDs as $ID )
+                $this->ErrorLinksIDs[] = $ID;
+        } // End foreach
+                
+    } // End function MarkErrors
+    
+    
+    /**
+    * Получение данных для генерации отчета
+    * Вызывается из index.php
+    * Пример использования (index.php)
+    * <code>
+    *   list( $StorageTrustedLinks, $StorageUnTrustedLinksAPI, $StorageUnTrustedLinks ) = $Storage->GetReport();
+    * </code>
     *
-    * @todo сделать по проектам (метка проекта при отправке отчета) - возможно не тут
+    * @access public
+    *
+    * @example index.php Пример использования в index.php
+    *
+    * @return array Массив ( $StorageTrustedLinks, $StorageUnTrustedLinks ), $StorageTrustedLinks - прошедшие фильтр ссылки, $StorageUnTrustedLinksAPI - непрошедшие фильтр ссылки с указанием причины отказа для проверок с использованием API, $StorageUnTrustedLinks - непрошедшие фильтр ссылки с указанием причины отказа без API
     */
     function GetReport() {
     
         $StorageTrustedLinks = array();
+        $StorageUnTrustedLinksAPI = array();
         $StorageUnTrustedLinks = array();
+        $StorageUnTrustedLinksBL = array();
         
+        /*
+        echo "<pre>";
+        var_dump( $this->ErrorLinksIDs );
+        echo "</pre>";
+        */
+
+        // API
         if( $result = $this->DBH->query( "
-            SELECT lf.id, lf.url, lf.nesting_level, lf.is_good, lu.reason
+            SELECT lf.id, lf.url, lf.nesting_level, lf.is_good, lu.reason, lu.api_log
             FROM links_to_filter lf LEFT JOIN links_untrasted lu ON (lu.link_id = lf.id)
         " ) ) {
         
@@ -315,13 +362,32 @@ class Storage {
                 echo "</pre>";
                 */
                 
+                
                 if( $row['is_good'] == "Y" ) {
                     $StorageTrustedLinks[$row['id']]['url'] = $row['url'];
                     $StorageTrustedLinks[$row['id']]['level'] = $row['nesting_level'];
                 } else {
-                    $StorageUnTrustedLinks[$row['id']]['url'] = $row['url'];
-                    $StorageUnTrustedLinks[$row['id']]['level'] = $row['nesting_level'];
-                    $StorageUnTrustedLinks[$row['id']]['reason'] = $row['reason'];
+                
+                    if( $row['api_log'] && ( $row['api_log'] == "Y" ) ) {
+                        
+                        $StorageUnTrustedLinksAPI[$row['id']]['url'] = $row['url'];
+                        $StorageUnTrustedLinksAPI[$row['id']]['level'] = $row['nesting_level'];
+                        $StorageUnTrustedLinksAPI[$row['id']]['reason'] = $row['reason'];
+                        
+                        if( !in_array( $row['id'], $this->ErrorLinksIDs ) )
+                            $StorageUnTrustedLinksBL[$row['id']] = $StorageUnTrustedLinksAPI[$row['id']];
+                        
+                    } else {
+                    
+                        $StorageUnTrustedLinks[$row['id']]['url'] = $row['url'];
+                        $StorageUnTrustedLinks[$row['id']]['level'] = $row['nesting_level'];
+                        $StorageUnTrustedLinks[$row['id']]['reason'] = $row['reason'];
+                        
+                        if( !in_array( $row['id'], $this->ErrorLinksIDs ) )
+                            $StorageUnTrustedLinksBL[$row['id']] = $StorageUnTrustedLinks[$row['id']];
+                    
+                    } // End if
+                    
                 } // End if
             } // End while
             
@@ -329,11 +395,46 @@ class Storage {
             
         } // End if
         
-        $this->_ToBL($this->ProjectID, $StorageUnTrustedLinks);
+        /*
+        // Not API
+        if( $result = $this->DBH->query( "
+            SELECT lf.id, lf.url, lf.nesting_level, lf.is_good, lu.reason
+            FROM links_to_filter lf LEFT JOIN links_untrasted lu ON (lu.link_id = lf.id)
+            WHERE lu.api_log = 'N'
+        " ) ) {
         
-        return array( $StorageTrustedLinks, $StorageUnTrustedLinks );
+            while( $row = $result->fetch_assoc() ) {
+                
+                
+                echo "<pre>";
+                var_dump( $row['is_good'] );
+                echo "</pre>";
+                
+                
+                if( $row['is_good'] == "Y" ) {
+                    $StorageTrustedLinks[$row['id']]['url'] = $row['url'];
+                    $StorageTrustedLinks[$row['id']]['level'] = $row['nesting_level'];
+                } else {
+                    $StorageUnTrustedLinks[$row['id']]['url'] = $row['url'];
+                    $StorageUnTrustedLinks[$row['id']]['level'] = $row['nesting_level'];
+                    $StorageUnTrustedLinks[$row['id']]['reason'] = $row['reason'];
+                    
+                    if( !in_array( $row['id'], $this->ErrorLinksIDs ) )
+                        $StorageUnTrustedLinksBL[$row['id']] = $StorageUnTrustedLinks[$row['id']];
+                    
+                } // End if
+            } // End while
+            
+            $result->free();
+            
+        } // End if
+        */
         
-    } // End function GetTrusted
+        $this->_ToBL($this->ProjectID, $StorageUnTrustedLinksBL);
+        
+        return array( $StorageTrustedLinks, $StorageUnTrustedLinksAPI, $StorageUnTrustedLinks );
+        
+    } // End function GetReport
 	
     
     /**

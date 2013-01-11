@@ -154,7 +154,7 @@ class LinksLoader {
             return $data; 
         } // End if
         
-    } // End function __Request
+    } // End function _SapeRequest
     
     
     /**

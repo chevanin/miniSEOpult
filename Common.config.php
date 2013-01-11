@@ -20,3 +20,13 @@ $sape_location = "/xmlrpc/?v=extended";
 $sape_login = "etorg3";
 $sape_password = "globalbus";
 $sape_status = "WAIT_SEO";
+
+// Параметры для подключения к seolib
+$seolib_login = "gbgroup";
+$seolib_password = "WY32olA8fp";
+
+// Параметры для подключения к seomoz.com
+$seomoz_access_id = "member-fc82b2bdc5";
+$seomoz_secret_key = "12105e69358c3ec4011924e1db2294a7";
+
+
