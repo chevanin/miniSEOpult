@@ -1,16 +1,47 @@
 <?php
 /**
- * 
- * Класс для филрации ссылок по параметрам самих страниц
- * 
- * @todo все включения кофигов в конструктор
- * @todo кэширование там, где регэкспы (преобразование массива в одну большубю строку можно делать в более низкоуровневой функции)
- * 
- */
+* Определение класса для филрации ссылок по параметрам самих страниц
+*
+* @package SAPE
+*/
+
+/**
+* Класс для для филрации ссылок по параметрам самих страниц
+*
+* @package SAPE
+* @author Chevanin Valeriy <chevanin@etorg.ru>
+* @todo все включения кофигов в конструктор<br>кэширование там, где регэкспы (преобразование массива в одну большубю строку можно делать в более низкоуровневой функции)<br>[_GetPageData]$NoCheckingDomains - массив разрешенных (не считающихся внешними) доменов (счетчики) вынести в конфиг
+*/
 class PageFilter {
 
-    //var $ToLog = false;
-	
+    /**
+    * Проверка <ul><li>на кол-во внутренних ссылок, кол-во внешних ссылок,</li> <li>кол-во символов на странице,</li> <li>на реальный уровень вложенности для ссылок 2-ого заявленного уровня,</li> <li>на стоп-слова на странице и в текстах ссылок.</li></ul> <br>Предельные значения для колличественных показателей берутся из Common.config.php
+    * Вызывается из index.php
+    * Пример использования (index.php)
+    * <code>
+    *   list( 
+    *        $TrustedLinks, 
+    *        $UnTrustedLinks[3], 
+    *        $UnTrustedLinksIDs[3], 
+    *        $UnTrustedLinksReasons[3], 
+    *        $ErrorLinksIDs[3]
+    *    ) = PageFilter::FilterLinksCount( $TrustedLinks, $NestingArray );
+    * </code>
+    *
+    * @access public
+    *
+    * @uses PageFilter::_GetPageData() для получения параметров каждой страницы
+    * @uses PageFilter::_GetCommonDomain() для определения домена ссылки
+    * @uses PageFilter::_GetRequestURI() для определения REQUEST_URI ссылки
+    * @see Common.config.sample.php
+    *
+    * @example index.php Пример использования в index.php
+    *
+    * @param array $Links массив ссылок для фильтрации
+    * @param array $NestingArray массив уровней вложенности ссылок
+    * @return array Массив ( $TrustedLinks, $UnTrustedLinks, $UnTrustedLinksIDs, $UnTrustedLinksReasons, $ErrorLinksIDs ), $TrustedLinks - неотфильтрованные ссылки ( "ID" => "URL" ), $UnTrustedLinks - непрошедшие фильтрацию ссылки, $UnTrustedLinksIDs - ID-ы непрошедших фильтрацию ссылок, $UnTrustedLinksReasons - причины отказа, $ErrorLinksIDs - отказы с ошибками
+    *
+    */
 	static public function FilterLinksCount( $Links, $NestingArray ) {
     
         require "Common.config.php";
@@ -23,63 +54,9 @@ class PageFilter {
         
         echo "<strong>Page parameters filtering...</strong>";
                 
-        /*
-        $TrustedLinksA = $TrustedLinks;
-        $TrustedLinks = array();
-        $TrustedLinks[8] = $TrustedLinksA[8];
-        var_dump( $TrustedLinks );
-        */
-        /*
-        $TrustedLinks = array();
-        $TrustedLinks[] = "http://proekt-41.ru/index.php?option=com_content&view=article&id=19&Itemid=20";
-        $NestingArray = array();
-        $NestingArray[] = 2;
-        */
-        /*
-        $TrustedLinks = array();
-        $TrustedLinks[] = "http://sape/test_href.html";
-        $NestingArray = array();
-        $NestingArray[] = 3;
-        */
-        /*
-        $TrustedLinks = array();
-        $TrustedLinks[] = "http://www.probuem.ru/gallery/ironsudb/P1/";
-        $NestingArray = array();
-        $NestingArray[] = 3;
-        */
-        /*
-        $TrustedLinks = array();
-        //$TrustedLinks[] = "http://kickboxing26.sk6.ru/index.php?option=com_content&task=view&id=56&Itemid=1";
-        //$TrustedLinks[] = "http://www.1c-multimedia.ru/igry-dlya-pc/game-xroniki-riddika-gold-jewel-akella.html";
-        //$TrustedLinks[] = "http://www.vobler-club.ru/index.php?page=shop&rub=1";
-        //$TrustedLinks[] = "http://ntravel.ru/catalog/archive/oteli-i-gostinitsyi/roz-mari";
-        //$TrustedLinks[] = "http://www.healtheconomics.ru/index.php?option=com_content&view=section&layout=blog&id=1&Itemid=95&limitstart=4720&text=TOP";
-        $TrustedLinks[] = "http://funcore.net/page/5052";
-        $NestingArray = array();
-        $NestingArray[] = 2;
-        */
-        /*
-        425 	3 	Недоступна (статус ответа 500) 	N
-        653 	3 	Недоступна (статус ответа 503) 	N
-        853 	3 	Недоступна (статус ответа 500) 	N
-        873 	3 	Недоступна (статус ответа 504) 	N
-        */
-        
-        
-        
         foreach( $TrustedLinks as $ID => $URL ) {
             
             $URLPageParameters = self::_GetPageData($URL);
-            
-            /*
-            echo $URL . "<br>";
-            echo "<pre>";
-            var_dump( $URLPageParameters );
-            echo "</pre>";
-            */
-            //$URLPageParameters['error_status'] = false;
-            
-            
             
             $InnerLinksCountOK = false;
             $OuterLinksCountOK = false;
@@ -119,42 +96,11 @@ class PageFilter {
                         
                         foreach( $CommonURLPageParameters['links'] as $MainPageLink ) {
                             
-                            // can bee outer links
-                            /*
-                            var_dump( $MainPageLink );
-                            echo "<br>";
-                            */
-                            
-                            //$RequestURIDomain = self::_GetCommonDomain($MainPageLink['url']);
-                            //echo "RequestURIDomain=" . $RequestURIDomain;
-                            //echo "<br>";
-                            
                             $RequestURI = self::_GetRequestURI($URL);
                             $MainPageLinkRequestURI = self::_GetRequestURI($MainPageLink['url']);
                             
                             $MainPageLinkRequestURI = preg_replace( "/#(.*?)$/is", "", $MainPageLinkRequestURI );
                             $RequestURI = preg_replace( "/#(.*?)$/is", "", $RequestURI );
-                            
-                            /*
-                            echo "main url=" . $URL;
-                            echo "<br>";
-                            echo "url=" . $MainPageLink['url'];
-                            echo "<br>";
-                            echo "MainPageLinkRequestURI=" . $MainPageLinkRequestURI;
-                            echo "<br>";
-                            echo "RequestURI=" . $RequestURI;
-                            echo "<br>";
-                            var_dump( htmlspecialchars($RequestURI) );
-                            echo "<br>";
-                            var_dump( htmlspecialchars($MainPageLinkRequestURI) );
-                            echo "<br>";
-                            echo "<br>";
-                            var_dump( htmlspecialchars(htmlspecialchars_decode($RequestURI)) );
-                            echo "<br>";
-                            var_dump( htmlspecialchars(htmlspecialchars_decode($MainPageLinkRequestURI)) );
-                            echo "<br>";
-                            echo "<br>";
-                            */
                             
                             if( !isset($MainPageLink['outer']) && ( htmlspecialchars_decode($MainPageLinkRequestURI) == htmlspecialchars_decode($RequestURI) ) ) {
                                 $RealLevelOK = true;
@@ -163,47 +109,40 @@ class PageFilter {
                         
                     } // End if
                     
-                    /*
-                    echo "2level=" . $RealLevelOK;
-                    echo "<br>";
-                    */
-                    
                 } else {
                     $RealLevelOK = true;
                 } // End if
                                 
                 if( !$InnerLinksCountOK || !$OuterLinksCountOK || !$SymbolsOnPageCountOK || !$RealLevelOK || !$SWTextOK || !$SWLinkOK ) {
                     $UnTrustedLinks[] = $URL;
-                    //$UnTrustedLinks[] = $URL . "_" . $InnerLinksCountOK . "_" . $OuterLinksCountOK . "_" . $SymbolsOnPageCountOK  . "_" .  $RealLevelOK;
                     $UnTrustedLinksIDs[] = $ID;
                     unset( $TrustedLinks[$ID] );
                     
                     $UnTrustedLinksReasons[$ID] = "";
-                    //if( $URLPageParameters['avl'] ) { 
-                        if( !$InnerLinksCountOK ) {
-                            $UnTrustedLinksReasons[$ID] .= "Не прошла по кол-ву внутренних ссылок ";
-                        } // End if
-                        
-                        if( !$OuterLinksCountOK ) {
-                            $UnTrustedLinksReasons[$ID] .= "Не прошла по кол-ву внешних ссылок ";
-                        } // End if
-                        
-                        if( !$SymbolsOnPageCountOK ) {
-                            $UnTrustedLinksReasons[$ID] .= "Не прошла по кол-ву символов ";
-                        } // End if
-                        
-                        if( !$RealLevelOK ) {
-                            $UnTrustedLinksReasons[$ID] .= "Не прошла по реальному 2-ому уровню ";
-                        } // End if
-                        
-                        if( !$SWTextOK ) {
-                            $UnTrustedLinksReasons[$ID] .= "Cтоп-слов в тексте больше " . $URLPageParameters['max_stop_words_cnt'] . " ";
-                        } // End if
-                        
-                        if( !$SWLinkOK ) {
-                            $UnTrustedLinksReasons[$ID] .= "В текстах внешних ссылок есть стоп-слова ";
-                        } // End if
-                    //} // End if
+                    if( !$InnerLinksCountOK ) {
+                        $UnTrustedLinksReasons[$ID] .= "Не прошла по кол-ву внутренних ссылок ";
+                    } // End if
+                    
+                    if( !$OuterLinksCountOK ) {
+                        $UnTrustedLinksReasons[$ID] .= "Не прошла по кол-ву внешних ссылок ";
+                    } // End if
+                    
+                    if( !$SymbolsOnPageCountOK ) {
+                        $UnTrustedLinksReasons[$ID] .= "Не прошла по кол-ву символов ";
+                    } // End if
+                    
+                    if( !$RealLevelOK ) {
+                        $UnTrustedLinksReasons[$ID] .= "Не прошла по реальному 2-ому уровню ";
+                    } // End if
+                    
+                    if( !$SWTextOK ) {
+                        $UnTrustedLinksReasons[$ID] .= "Cтоп-слов в тексте больше " . $URLPageParameters['max_stop_words_cnt'] . " ";
+                    } // End if
+                    
+                    if( !$SWLinkOK ) {
+                        $UnTrustedLinksReasons[$ID] .= "В текстах внешних ссылок есть стоп-слова ";
+                    } // End if
+                    
                 } // End if
                 
             } else {
@@ -217,21 +156,9 @@ class PageFilter {
                     $UnTrustedLinks[] = $URL;
                     $UnTrustedLinksIDs[] = $ID;
                     $UnTrustedLinksReasons[$ID] = "Страница недоступна (статус ответа " . $URLPageParameters['error_status'] . ")";
-                    //$UnTrustedLinksReasons[$ID] = "Произошла ошибка при обращении к странице - возможен сбой";
-                    //$ErrorLinksIDs[] = $ID;
                     unset( $TrustedLinks[$ID] );
                 } // End if
-            /*
-                            $UnTrustedLinks[] = $URL;
-                $UnTrustedLinksIDs[] = $ID;
-                $UnTrustedLinksReasons[$ID] = "Произошла ошибка при проверке по Alexa.";
-                $ErrorLinksIDs[] = $ID;
-                unset( $TrustedLinks[$ID] );
-
-            */
             } // End if
-            
-            
             
         } // End foreach
         
@@ -242,39 +169,56 @@ class PageFilter {
     } // End function FilterLinksCount
     
     
+    /**
+    * Определяет REQUEST_URI ссылки
+    * Вызывается из PageFilter::FilterLinksCount()
+    * Пример использования
+    * <code>
+    *   $RequestURI = self::_GetRequestURI($URL);
+    * </code>
+    *
+    * @access protected
+    *
+    * @param string $URL URL для определения REQUEST_URI
+    * @return string REQUEST_URI ссылки
+    *
+    */
     protected function _GetRequestURI($URL) {
         
         $BaseURL = $URL;
         $URL = preg_replace( "/http:\/\//is", "", $URL );
         
-        //$URL = preg_replace( "/\?(.*?)$/is", "", $URL );
-        
         if( !preg_match( "/^\//is", $URL ) && !preg_match( "/http:\/\//is", $BaseURL ) )
             $URL = "/" . $URL;
         
-        //if( preg_match( "/^\//is", $URL ) ) {
-            $URLArray = explode( "/", $URL );
-            unset( $URLArray[0]);
-            $RequestURI = "/" . implode( "/", $URLArray );            
-        /*} else {
-            $RequestURI = "/" . $URL;
-        } // End if*/
+        $URLArray = explode( "/", $URL );
+        unset( $URLArray[0]);
+        $RequestURI = "/" . implode( "/", $URLArray );            
         
         return $RequestURI;
 
     } // End function _GetRequestURI
 
 
-
-    // нужна проверка на ошибку подключения
-    // 404 - обрабатывается хорошо
-    // если отсутствует домен, то тоже все норм
-    // проверка на подключение - есть
-    
-    // домены 3-его уровня - сделай в конфиге флаг да/нет. Для Яндекса = внутренняя ссылка, для Гугла - внешняя... надо анализировать на больших выборках. пока можем считать, что является внешней.
-    // пока, считаем, что внутренняя
-    // в логе ссылок есть про украину
-    // а вот если www.site.ru ссылается на site.ru, то по идее надо считать внутренней. кстати можно запилить отдельный параметр - ссылки на поддомены, и для них отдельное количество выставлять, наверное так будет оптимальней всего
+    /**
+    * Получение параметров страницы: <ul><li>код ответа страницы (если не 200, то дополнительно возвращает метку 'avl' => false),</li> <li>кол-во внутренних ссылок,</li> <li>кол-во внешних ссылок,</li> <li>массив ссылок,</li> <li>кол-во стоп-слов в текстах ссылок,</li> <li>кол-во стоп-слов в тексте,</li> <li>кол-во символов "чистого" текста</li></ul><br>Использует curl
+    * Вызывается из PageFilter::FilterLinksCount()
+    * Пример использования
+    * <code>
+    *   $URLPageParameters = self::_GetPageData($URL);
+    * </code>
+    *
+    * @access protected
+    *
+    * @link http://docs.php.net/manual/ru/ref.curl.php описание функций PHP CURL
+    * @uses PageFilter::_GetLinks() для получения ссылок со страницы
+    * @uses PageFilter::_GetCommonDomain() для определения домена ссылки
+    * @uses PageFilter::_GetSWMaskFilterArray() для получения стоп-слов
+    * @see RegexFiter.config.sample.php
+    *
+    * @param string $URL URL страницы
+    * @return array Массив с ключами: <ul><li>avl (bool) - доступна ли ссылка (200 OK),</li> <li>inner_links_cnt (integer) - кол-во внутренних ссылок,</li> <li>outer_links_cnt (integer) - кол-во внешних ссылок,</li> <li>links - массив ссылок на странице array( 'url' => <адрес ссылки>, 'text' => <текст ссылки>, 'outer' => <bool внешняя ли ссылка>, 'have_stop_words' => <bool содержит ли текст ссылки стоп-слова>),</li> <li>stop_words_in_links_cnt (integer) - кол-во стоп-слов в ссылках,</li> <li>stop_words_cnt (integer) - кол-во стоп-слов в тексте,</li> <li>max_stop_words_cnt (integer) - допустимое кол-во стоп-слов в тексте из конфига RegexFiter.config.sample.php,</li> <li>symbols_cnt (integer) - кол-во символов "чистого" текста страницы,</li> <li>error_status (string) - статус ответа, если отличен от 200</li></ul>
+    */
     protected function _GetPageData($URL) {
     
         $PageParams = array();
@@ -302,21 +246,6 @@ class PageFilter {
         $Response = preg_replace( "/<\!--(.*?)noindex(.*?)-->(.*?)<\!--(.*?)\/noindex(.*?)-->/is", "", $Response );
         $Response = preg_replace( "/<noindex>(.*?)$/is", "</body>", $Response );
 
-        /*
-        $Response = '
-        "HTTP/1 200 OK
-        <body><p><a href = "/images/1299633097.jpg"><img src="/images/thumbs_1299633097.jpg" class="alignnone size-full wp-image-59" style="padding-right:15px;" align="left" title=" GAME Хроники Риддика Gold (Jewel) (Акелла) " alt=" GAME Хроники Риддика Gold (Jewel) (Акелла) " /></a> Впервые под одной обложкой мы собрали все приключения Ричарда Риддика, знаменитого маньяка-психопата, героя фильмов &quot;Черная Дыра&quot;&quot;Хроники Риддика&quot; Сюжет обеих игр предваряет события первого фильма кинодилогии, &quot;Черная Дыра&quot;. По словам   <span id="more-760"></span> <br /> Впервые под одной обложкой мы собрали все приключения Ричарда Риддика, знаменитого маньяка-психопата, героя фильмов &quot;Черная Дыра&quot;&quot;Хроники Риддика&quot; Сюжет обеих игр предваряет события первого фильма кинодилогии, &quot;Черная Дыра&quot;. По словам авторитетного игрового сайта Eurogamer, &quot;зачастую кинолицензия только вредит игре, но The Chronicles of Riddick в этом плане уникальна.&quot; В 2009 году, к выходу сиквела Assault on Dark Athena, первая часть была полностью переработана, и это издание фактически является ремейком одной из лучших игр 2004 года с графикой, доработанной до технологий нашего времени, визуально ни в чем не уступающая сиквелу. Это один из первых случаев ремейка игры ее же разработчиками, с радостью встреченный поклонниками первой части The Chronicles of Riddick. The Chronicles of Riddick: Assault on Dark Athena &#8211; долгожданное продолжение приключений Ричарда Риддика. Как и в первый раз, непосредственное в озвучивании игры принял исполнитель роли Риддика в кино &#8211; актер Вин Дизель. Вобрав в себя все самое лучшее от первой части, сиквел также отличился новыми режимами игры по сети, не менее интересной сюжетной линией и сильной технической стороной: Оптимизированный под работу с последними моделями видеокарт, графический движок Assault on Dark Athena прекрасно с отрытыми пространствами и реалистичными текстурами. Как и в 2004, несмотря на жестокую конкуренцию, Chronicles of Riddick имеет шансы стать лучшим шутером 2009 года. Для активации игры требуется подключение к сети Интернет! Возраст: 16+ Язык интерфейса: русский. Системные требования: Windows XP SP2; Pentium Core 2 Duo; 1 Гб оперативной памяти; 12 Гб свободного места на жестком диске; DirectX 9 &#8211; совместимая видеокарта с памятью 256 Мб; DirectX 9.0c; 8-ми скоростное устройство для чтения DVD-дисков; Клавиатура; Мышь. </p>
-
-
-        ';
-        */
-        /*
-        echo "<pre>";
-        var_dump( htmlspecialchars($Response) );
-        echo "</pre><hr>";
-        */
-        
-
         $CommonDomain = self::_GetCommonDomain($URL);
 
         // Проверяем на 200 OK
@@ -327,8 +256,6 @@ class PageFilter {
             $PageParams['outer_links_cnt'] = 0;
             $PageParams['links'] = self::_GetLinks($Response);
             $PageParams['stop_words_in_links_cnt'] = 0;
-            
-            //if( self::ToLog ) $links_log = fopen( "links.html", "a+" );
             
             $outer_links = array();
                 
@@ -343,26 +270,14 @@ class PageFilter {
 
             $RegexFilter = "@" . implode( "|", $RegexFilterArrayPat ) . "@is";
             
-        
             foreach( $PageParams['links'] as $link_id => $link ) {
-                //if( self::ToLog ) fputs( $links_log, "<hr>" );
-                //if( self::ToLog ) fputs( $links_log, $link['url'] );
                 if( preg_match( "/^http:\/\//is", $link['url'] ) ) {
                     if( !preg_match( "/javascript:/is", $link['url'] ) && !preg_match( "/mailto:/is", $link['url'] ) ) {
                     
                         $link_domain = self::_GetCommonDomain($link['url'], false);
                         $link_domain_www = self::_GetCommonDomain($link['url'], true);
-                        /*
-                        echo $link['url'];
-                        echo "<br>";
-                        echo $link_domain;
-                        echo "<br>";
-                        echo $link_domain_www;
-                        echo "<br>";
-                        echo $CommonDomain;
-                        echo "<hr>";
-                        */
-                        //top100.rambler.ru
+                        $CommonDomain_nowww = self::_GetCommonDomain($URL, false);
+
                         $NoCheckingDomains = array(
                             "top100.rambler.ru",
                             "liveinternet.ru",
@@ -370,18 +285,15 @@ class PageFilter {
                             "mc.yandex.ru",
                         );
                         
-                        if( ( $link_domain == $CommonDomain ) || ( $link_domain_www == $CommonDomain ) ) {
+                        if( ( $link_domain == $CommonDomain ) || ( $link_domain_www == $CommonDomain ) || ( $link_domain == $CommonDomain_nowww ) || ( $link_domain_www == $CommonDomain_nowww ) ) {
                             $PageParams['inner_links_cnt']++;
-                            //if( self::ToLog ) fputs( $links_log, "<br>inner link<br>" );
                         } elseif( in_array( $link_domain, $NoCheckingDomains ) || in_array( $link_domain_www, $NoCheckingDomains ) ) {
                             $PageParams['inner_links_cnt']++;
                         } else {
                             if( !in_array( $link['url'], $outer_links ) && ( trim($link_domain) != "" ) ) {
                                 $PageParams['outer_links_cnt']++;
                                 $outer_links[] = $link['url'];
-                                // top100 liveinternet yandex.ru top.mail
                                 $PageParams['links'][$link_id]['outer'] = true;
-                                //if( self::ToLog ) fputs( $links_log, "<br>outer link<br>" );
                             } // End if
                         } // End if
                         
@@ -389,12 +301,9 @@ class PageFilter {
                 } else {
                     if( !preg_match( "/javascript:/is", $link['url'] ) && !preg_match( "/mailto:/is", $link['url'] ) ) {
                         $PageParams['inner_links_cnt']++;
-                        //if( self::ToLog ) fputs( $links_log, "<br>inner link<br>" );
                     } // End if
                 } // End if
-                //if( self::ToLog ) fputs( $links_log, "<hr>" );
-                
-                
+                                
                 if( ( $PageParams['links'][$link_id]['outer'] == true ) && preg_match( $RegexFilter, $link['text'], $mtch ) ) {
                     $PageParams['links'][$link_id]['have_stop_words'] = true;
                     $PageParams['stop_words_in_links_cnt']++;
@@ -402,65 +311,17 @@ class PageFilter {
                 
             } // End foreach
             
-            //if( self::ToLog ) fclose( $links_log );
-            
             // Считаем количество символов на странице между тегами BODY, без учёта текстов ссылок
             $PageParams['symbols_cnt'] = 0;
             if( preg_match( "/<body(.*?)>(.*?)$/is", $Response, $mt ) ) {
             
                 $BodyText = $mt[2];
-                
-                // Erase noindex
-                //$BodyText = preg_replace( "/<noindex>(.*?)<\/noindex>/is", "", $BodyText );
-                //$BodyText = preg_replace( "/<\!-- noindex -->(.*?)<\!-- \/noindex -->/is", "", $BodyText );
-                
-                // Erase comments
-                //$BodyText = preg_replace( "/<\!--(.*?)-->/is", "", $BodyText );
-                
-                // Erase scripts and styles
-                //$BodyText = preg_replace( "/<script(.*?)<\/script>/is", "", $BodyText );
                 $BodyText = preg_replace( "/<style(.*?)<\/style>/is", "", $BodyText );
-                
-                // Erase links
-                /*
-                if( preg_match_all( "/<a(.*?)href(.*?)=(.*?)<\/a>/is", $BodyText, $mt ) ) {
-                    echo "<pre>";
-                    var_dump( $mt );
-                    echo "</pre>";
-                } // End if
-                */
                 $BodyText = preg_replace( "/<a(.*?)href(.*?)=(.*?)<\/a>/is", "", $BodyText );
-                /*
-                echo "<hr><pre>";
-                var_dump( htmlspecialchars($BodyText) );
-                echo "</pre><hr>";
-                */
-                
-                // Erase tags
-                $BodyText = preg_replace( "/<(.*?)>/is", "", $BodyText );
-                
+                $BodyText = preg_replace( "/<(.*?)>/is", "", $BodyText );              
                 $PageParams['symbols_cnt'] = strlen( trim($BodyText) );
                 
-                /*
-                echo "<hr><pre>";
-                var_dump( htmlspecialchars($BodyText) );
-                echo "</pre><hr>";
-                */
-                
-                /*
-                echo "<pre>";
-                var_dump( $MaxAvailCountInText );
-                var_dump( $StopWordsMasks );
-                var_dump( $RegexFilter );
-                echo "</pre>";
-                */
-                
                 if( preg_match_all( $RegexFilter, $BodyText, $mtch, PREG_SET_ORDER ) ) {
-                    /*
-                    echo "<pre>";
-                    var_dump( $mtch );
-                    echo "</pre>";
-                    */
                     $PageParams['stop_words_cnt'] += count( $mtch );
                 } // End if
                                 
@@ -480,8 +341,19 @@ class PageFilter {
     } // End function _GetPageData
     
     
-    // Информаия о ссылках со страницы (текста страницы)
-    // Поработать еще со вложенными ссылками
+    /**
+    * Получение массива ссылок из HTML кода страницы
+    * Вызывается из PageFilter::_GetPageData()
+    * Пример использования
+    * <code>
+    *   $PageParams['links'] = self::_GetLinks($Response);
+    * </code>
+    *
+    * @access protected
+    *
+    * @param string $Text HTML код страницы
+    * @return array массив ссылок, каждый элемент массива - массив с ключами 'url' и 'text'
+    */
     protected function _GetLinks($Text) {
     
         // Clearing text - deleting noindex blocks
@@ -489,9 +361,6 @@ class PageFilter {
         $Text = preg_replace( "/<\!-- noindex -->(.*?)<\!-- \/noindex -->/is", "", $Text );
         
         $links = array();
-        // Для вложенных ссылок берутся параметры самой нижней
-        //if( preg_match_all( "/<a([^<>]*)>([^<>]*)<\/a>/is", $Text, $LnkMtch, PREG_SET_ORDER ) ) {
-        // Для вложенных ссылок берутся параметры самой верхней
         if( preg_match_all( "/<a([^<>]*)>(.*?)<\/a>/is", $Text, $LnkMtch, PREG_SET_ORDER ) ) {
         
             foreach( $LnkMtch as $LinkMArray ) {
@@ -511,7 +380,6 @@ class PageFilter {
                 
                 if( !$nofollow && $have_href ) {
                     $link = array( 
-                        //'a_text' => $LinkMArray[1],
                         'url' => $mt[1],
                         'text' => $LinkMArray[2]
                     );
@@ -527,7 +395,20 @@ class PageFilter {
     } // End function _GetLinks
     
     
-    // Определяет основной домен $URL
+    /**
+    * Определяет основной домен $URL
+    * Вызывается из PageFilter::FilterLinksCount()
+    * Пример использования
+    * <code>
+    *   $DomainURL = self::_GetCommonDomain($URL);
+    * </code>
+    *
+    * @access protected
+    *
+    * @param string $URL URL для определения основного домена
+    * @param bool $Is3LevelOuter считать ли ссылки с www аналогами без www
+    * @return string основной домен ссылки
+    */
     protected function _GetCommonDomain($URL, $Is3LevelOuter = true ) {
     
         $CommonDomain = preg_replace( "/http:\/\//is", "", $URL );
@@ -535,8 +416,10 @@ class PageFilter {
         $CommonDomain = $CommonDomainArray[0];
         
         if( !$Is3LevelOuter ) {
-            $CommonDomainLvlArray = explode( ".", $CommonDomain );            
-            $CommonDomain = $CommonDomainLvlArray[count($CommonDomainLvlArray)-2] . "." . $CommonDomainLvlArray[count($CommonDomainLvlArray)-1];
+            $CommonDomainLvlArray = explode( ".", $CommonDomain );   
+            if( ( count( $CommonDomainLvlArray ) == 3 ) && ( $CommonDomainLvlArray[0] == "www" ) ) {
+                $CommonDomain = $CommonDomainLvlArray[count($CommonDomainLvlArray)-2] . "." . $CommonDomainLvlArray[count($CommonDomainLvlArray)-1];
+            } // End if
         } // End if
         
         return $CommonDomain;
@@ -544,8 +427,16 @@ class PageFilter {
     } // End function _GetCommonDomain
     
     
-    // Определяет основной домен $URL
-    // Обертка - публичная ф-ия для других классов
+    /**
+    * Обертка для PageFilter::_GetCommonDomain()
+    *
+    * @access public
+    * @see PageFilter::_GetCommonDomain()
+    *
+    * @param string $URL URL для определения основного домена
+    * @param bool $Is3LevelOuter считать ли ссылки вида www2.site.ru внешними (3-его уровня)
+    * @return string основной домен ссылки
+    */
     public function GetCommonDomain($URL, $Is3LevelOuter = true ) {
     
         return self::_GetCommonDomain($URL, $Is3LevelOuter);
@@ -553,210 +444,22 @@ class PageFilter {
     } // End function _GetCommonDomain
 
 
-    protected function _GetSWMaskFilterArray() {
-        
-        require "RegexFilter.config.php";
-        /*
-        $RegexFilterArray = array(
-            "board",
-            "(php|ya|fast)bb",
-            "phorum",
-            "guest",
-            "gbs",
-            "gostevaja",
-            "forum",
-            "view(profile|topic|thread)",
-            "show(post|topic|thread|comments|user)",
-            "printthread",
-            "akobook",
-            "ns-comments",
-            "datsogallery",
-            "gbook",
-            "thread\.php",
-        );
-        */
-        
-        return array( $MaxAvailCountInText, $StopWordsMasks );
-        
-    } // End function _GetSWMaskFilterArray
-    
-    
-    
-    /*
-	static public function FilterRegex( $Links ) {
-    
-        $TrustedLinks = $Links;
-        $UnTrustedLinks = array();
-        $UnTrustedLinksIDs = array();
-        
-        echo "<strong>Regex filtering...</strong>";
-        
-        $RegexFilterArray = self::_GetRegexFilterArray();
-        
-        $RegexFilterArrayPat = array();
-        foreach( $RegexFilterArray as $FilterStr ) {
-            $RegexFilterArrayPat[] = "(" . $FilterStr . ")";
-        } // End foreach
-
-        $RegexFilter = "@" . implode( "|", $RegexFilterArrayPat ) . "@is";
-        
-        foreach( $TrustedLinks as $ID => $URL ) {
-            
-            if( preg_match( $RegexFilter, $URL, $mtch ) ) {
-                $UnTrustedLinks[] = $URL;
-                $UnTrustedLinksIDs[] = $ID;
-                unset( $TrustedLinks[$ID] );
-            } // End if
-            
-        } // End foreach
-        
-        echo "<br><strong>Regex filtering finished</strong>";
-        
-        return array( $TrustedLinks, $UnTrustedLinks, $UnTrustedLinksIDs );
-        
-    } // End function FilterRegex
-    
-    
-    static public function FilterAlexa( $Links ) {
-        
-        require "Common.config.php";
-        
-        $TrustedLinks = $Links;
-        $UnTrustedLinks = array();
-        $UnTrustedLinksIDs = array();
-        
-        echo "<br><br><strong>Alexa filtering...</strong>";
-        
-        echo "<br>ALEXA BORDER = " . $AlexaPopularityBorder . "<br>";
-
-        foreach( $TrustedLinks as $ID => $URL ) {
-            
-            $URLAlexaPopularity = self::_GetAlexaPopularity($URL);
-            
-            if( $URLAlexaPopularity == 0 ) {
-                $UnTrustedLinks[] = $URL;
-                $UnTrustedLinksIDs[] = $ID;
-                unset( $TrustedLinks[$ID] );
-            } // End if
-            
-        } // End foreach
-        
-        echo "<br><strong>Alexa filtering finished</strong>";
-        
-        return array( $TrustedLinks, $UnTrustedLinks, $UnTrustedLinksIDs );
-        
-    } // End function FilterAlexa
-    
-    
-    static public function FilterLiveInternet( $Links ) {
-        
-        require "Common.config.php";
-        
-        $TrustedLinks = $Links;
-        $UnTrustedLinks = array();
-        $UnTrustedLinksIDs = array();
-        
-        echo "<br><br><strong>LiveInternet filtering...</strong>";
-        
-        echo "<br>LI_month_vis BORDER = " . $LI_month_vis . "<br>";
-
-        foreach( $TrustedLinks as $ID => $URL ) {
-        
-            $URLLIParameter = self::_GetLIData($URL);
-            
-            if( !$URLLIParameter[0] && ( $URLLIParameter[1] < $LI_month_vis ) ) {
-                $UnTrustedLinks[] = $URL;
-                $UnTrustedLinksIDs[] = $ID;
-                unset( $TrustedLinks[$ID] );
-            } // End if
-            
-        } // End foreach
-        
-        echo "<br><strong>LiveInternet filtering finished</strong>";
-        
-        return array( $TrustedLinks, $UnTrustedLinks, $UnTrustedLinksIDs );
-        
-    } // End function FilterLiveInternet
-    
-    
-    protected function _GetLIData($URL) {
-    
-        $Error = false;
-        $LI_month_vis = 0;
-        
-        $URLtoLI = preg_replace( "/http\:\/\//is", "", $URL );
-        $URLtoLI_array = explode( "/", $URLtoLI );       
-        $URLtoLI = $URLtoLI_array[0];
-        $LIRequestURL = "http://counter.yadro.ru/values?site=".$URLtoLI;
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $LIRequestURL);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-
-        $Response = curl_exec($ch);
-        
-        if( preg_match( "/LI_error/is", $Response ) ) {
-            $Error = true;
-        } // End if
-        
-        if( preg_match( "/LI_month_vis(.*?)=(.*?)(\d+);/is", $Response, $mtch ) ) {
-            if( isset($mtch[3]) ) {
-                $LI_month_vis = intval($mtch[3]);
-            } else {
-                $Error = true;
-            } // End if
-        } else {
-            $Error = true;
-        } // End if
-
-        curl_close($ch);        
-        
-        return array( $Error, $LI_month_vis );        
-        
-    } // End function _GetLIData
-    
-    
-    protected function _GetAlexaPopularity($URL) {
-        
-        sleep(1);
-        $ch = curl_init();
-        
-        $AlexaRequestURL = "http://data.alexa.com/data?cli=10&dat=s&url=".$URL;
-        
-        curl_setopt($ch, CURLOPT_URL, $AlexaRequestURL);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-
-        $Response = curl_exec($ch);
-        $xml = simplexml_load_string($Response);
-        return intval($xml->SD[1]->POPULARITY['TEXT']); 
-        
-        curl_close($ch);        
-        
-    } // End function _GetAlexaPopularity
-    
-    
-    protected function _GetAlexaPopularityD($URL) {
-        
-        sleep(1);
-        $AlexaRequestURL = "http://data.alexa.com/data?cli=10&dat=s&url=".$URL;
-        echo $AlexaRequestURL;
-        echo "<br>";
-        $xml = simplexml_load_file("http://data.alexa.com/data?cli=10&dat=s&url=".$URL);
-        return intval($xml->SD[1]->POPULARITY['TEXT']); 
-        
-    } // End function _GetAlexaPopularity
-    
-    
-    protected function _GetRegexFilterArray() {
-        
-        require_once "RegexFilter.config.php";
-        
-        return $RegexFilterArray;
-        
-    } // End function _GetRegexFilterArray
-    
+    /**
+    * Получение массива стоп-слов и предельно допустимого кол-ва стоп-слов на странице из конфига RegexFilter.class.php
+    * Вызывается из LinksLoader::_GetPageData()
+    *
+    * Пример использования
+    * <code>
+    *    list( $MaxAvailCountInText, $StopWordsMasks ) = self::_GetSWMaskFilterArray();
+    * </code>
+    *
+    * @access protected
+    *
+    * @return array массив с элементами $MaxAvailCountInText - предельно допустимое кол-во стоп-слов на странице, $StopWordsMasks - массив стоп-слов
     */
+    protected function _GetSWMaskFilterArray() {
+        require "RegexFilter.config.php";
+        return array( $MaxAvailCountInText, $StopWordsMasks );
+    } // End function _GetSWMaskFilterArray
 	
 } // End class PageFilter

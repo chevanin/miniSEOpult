@@ -46,7 +46,7 @@ require_once "Storage.class.php";
 
 
 $argv = array();
-$argv[] = "-s";
+//$argv[] = "-s";
 //$argv[] = "1";
 //$argv[] = "2";
 //$argv[] = "3";
@@ -55,27 +55,50 @@ $argv[] = "-s";
 //$argv[] = "6"; // report
 //$argv[] = "7"; // black list
 //$argv[] = "8"; // seolib
-$argv[] = "9"; // mozrank
+//$argv[] = "9"; // mozrank
 
+/*
 $argv[] = "-p";
 $argv[] = "105199";
+*/
 
+//if( !in_array( "-p", $argv ) || !isset( $argv[array_search( "-p", $argv )+1] ) ) die("Project ID not defined");
 
-if( !in_array( "-p", $argv ) || !isset( $argv[array_search( "-p", $argv )+1] ) ) die("Project ID not defined");
-
-$PROJECT_ID = $argv[array_search( "-p", $argv )+1];
+//$PROJECT_ID = $argv[array_search( "-p", $argv )+1];
 
 if( !in_array( "-s", $argv ) || in_array( "1", $argv ) ) {
     // Получаем ссылки для фильтрации
-    list( $Links, $NestingArray ) = LinksLoader::Get($PROJECT_ID);
+    //list( $Links, $NestingArray ) = LinksLoader::Get($PROJECT_ID);
+    list( $Links, $NestingArray, $LinksProjects ) = LinksLoader::Get();
 } else {
     $Links = array();
     $NestingArray = array();
+    $LinksProjects = array();
 } // End if
 
-$Storage = new Storage( $PROJECT_ID, $Links, $NestingArray );
-list( $TrustedLinks, $NestingArray, $UnTrustedLinks, $UnTrustedLinksIDs, $UnTrustedLinksReasons ) = $Storage->GetDatas();
+/*
+echo "<pre>";
+var_dump($LinksProjects);
+echo "</pre>";
+*/
 
+$Storage = new Storage( $Links, $NestingArray, $LinksProjects );
+list( $TrustedLinks, $NestingArray, $LinksProjects, $UnTrustedLinks, $UnTrustedLinksIDs, $UnTrustedLinksReasons ) = $Storage->GetDatas();
+
+/*
+    echo "<pre>";
+    //var_dump( $TrustedLinks );
+    echo "<hr>";
+    //var_dump( $NestingArray );
+    echo "<hr>";
+    var_dump( $LinksProjects );
+    echo "<hr>";
+    //var_dump( $UnTrustedLinksReasons );
+    echo "<hr>";
+    //var_dump( $ErrorLinksIDs );
+    echo "<hr>";
+    echo "</pre>";
+*/
 $ErrorLinksIDs = array();
 
 // Фильтрация ссылок по black list
@@ -92,6 +115,14 @@ if( !in_array( "-s", $argv ) || in_array( "7", $argv ) ) {
 // RegexFilter.config.php - конфиг регулярок
 if( !in_array( "-s", $argv ) || in_array( "2", $argv ) ) {
     list( $TrustedLinks, $UnTrustedLinks[0], $UnTrustedLinksIDs[0], $UnTrustedLinksReasons[0] ) = LinksFilter::FilterRegex( $TrustedLinks );
+    /*
+    echo "<pre>";
+    var_dump( $UnTrustedLinks );
+    echo "<hr>";
+    var_dump( $UnTrustedLinksReasons );
+    echo "<hr>";
+    echo "</pre>";
+    */
     $Storage->UnTrust(0, $UnTrustedLinksIDs[0], $UnTrustedLinksReasons[0]);
 } // End if
 
@@ -101,16 +132,6 @@ if( !in_array( "-s", $argv ) || in_array( "4", $argv ) ) {
     list( $TrustedLinks, $UnTrustedLinks[2], $UnTrustedLinksIDs[2], $UnTrustedLinksReasons[2], $ErrorLinksIDs[2] ) = LinksFilter::FilterLiveInternet( $TrustedLinks );
     $Storage->UnTrust(2, $UnTrustedLinksIDs[2], $UnTrustedLinksReasons[2], true);
     /*
-    echo "<pre>";
-    var_dump( $TrustedLinks );
-    echo "<hr>";
-    var_dump( $UnTrustedLinks );
-    echo "<hr>";
-    var_dump( $UnTrustedLinksReasons );
-    echo "<hr>";
-    var_dump( $ErrorLinksIDs );
-    echo "<hr>";
-    echo "</pre>";
     */
 } // End if
 
@@ -139,8 +160,9 @@ if( !in_array( "-s", $argv ) || in_array( "3", $argv ) ) {
 // Common.config.php - общий конфиг, где всякие пределы (кол-во символов текста, кол-во ссылок)
 if( !in_array( "-s", $argv ) || in_array( "5", $argv ) ) {
     //list( $TrustedLinks, $UnTrustedLinks[3], $UnTrustedLinksIDs[3], $UnTrustedLinksReasons[3] ) = PageFilter::FilterLinksCount( $TrustedLinks, $NestingArray );
-    list( $TrustedLinks, $UnTrustedLinks[3], $UnTrustedLinksIDs[3], $UnTrustedLinksReasons[3], $ErrorLinksIDs[3] ) = LinksFilter::FilterAlexa( $TrustedLinks );
+    list( $TrustedLinks, $UnTrustedLinks[3], $UnTrustedLinksIDs[3], $UnTrustedLinksReasons[3], $ErrorLinksIDs[3] ) = PageFilter::FilterLinksCount( $TrustedLinks, $NestingArray );
     
+    /*
     echo "<pre>";
     var_dump( $TrustedLinks );
     echo "<hr>";
@@ -151,6 +173,7 @@ if( !in_array( "-s", $argv ) || in_array( "5", $argv ) ) {
     var_dump( $ErrorLinksIDs );
     echo "<hr>";
     echo "</pre>";
+    */
     
     $Storage->UnTrust(3, $UnTrustedLinksIDs[3], $UnTrustedLinksReasons[3]);
 } // End if
@@ -191,6 +214,7 @@ if( !in_array( "-s", $argv ) || in_array( "9", $argv ) ) {
 
 
 */
+/*
     echo "<pre>";
     var_dump( $TrustedLinks );
     echo "<hr>";
@@ -201,6 +225,7 @@ if( !in_array( "-s", $argv ) || in_array( "9", $argv ) ) {
     var_dump( $ErrorLinksIDs );
     echo "<hr>";
     echo "</pre>";
+*/
     $Storage->UnTrust(6, $UnTrustedLinksIDs[6], $UnTrustedLinksReasons[6], true);
 } // End if
 
@@ -225,7 +250,8 @@ if( !in_array( "-s", $argv ) || in_array( "9", $argv ) ) {
 if( !in_array( "-s", $argv ) || in_array( "6", $argv ) ) {
 
     // Гененрируем отчет
-    $Report = new Report( $PROJECT_ID );
+    //$Report = new Report( $PROJECT_ID );
+    $Report = new Report();
     
     // Помечаем ошибки при проверках для исключения их из BL
     $Storage->MarkErrors($ErrorLinksIDs);
@@ -243,6 +269,7 @@ if( !in_array( "-s", $argv ) || in_array( "6", $argv ) ) {
     echo "<hr>";
     echo "</pre>";
     */
+    
     $Report->GenerateCSV( $StorageTrustedLinks, array( "URL", "Уровень" ), "trusted_" . date("d-m-Y") . ".csv" );
     $Report->GenerateCSV( $StorageUnTrustedLinksAPI, array( "URL", "Уровень", "Причина отклонения" ), "API_untrusted_" . date("d-m-Y") . ".csv" );
     $Report->GenerateCSV( $StorageUnTrustedLinks, array( "URL", "Уровень", "Причина отклонения" ), "ACCESS_untrusted_" . date("d-m-Y") . ".csv" );

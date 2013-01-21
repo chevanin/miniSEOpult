@@ -1,16 +1,36 @@
 <?php
+/**
+* Определение класса для подготовки данных и формирования отчета
+*
+* @package SAPE
+*/
 
+/**
+* Класс для подготовки данных и формирования отчета
+*
+* @package SAPE
+* @author Chevanin Valeriy <chevanin@etorg.ru>
+* @todo Вынести Email-ы в конфиг и заполнять в констукторе<br>дать ссылку на Common.config.sample.php 
+*/
 class Report {
 
     /**
-    * ID проекта в sape.ru
+    * Массив прикрепляемых к отчету файлов
     * @access protected
-    * @var integer
+    * @var array
     */
-    protected $ProjectID = 0;
-    protected $ReportValues = array();
     protected $ReportFiles = array();
+    /**
+    * От кото письмо с отчетом (не имеет особого значения, обратная почта не обрабатывается, можно использовать для каких-то временных сохранений отчетов)
+    * @access protected
+    * @var string
+    */
     protected $EmailFrom = "chevanin@etorg.ru";
+    /**
+    * Адрес администратора, на который будет уходить письмо с отчетом
+    * @access protected
+    * @var string
+    */
     protected $EmailTo = "test@test.ru";
 
     /**
@@ -18,37 +38,41 @@ class Report {
     * Вызывается из index.php
     * Пример использования (index.php)
     * <code>
-    *   $Report = new Report( $PROJECT_ID );
+    *   $Report = new Report();
     * </code>
     *
     * @example index.php Пример использования в index.php
     *
-    * @param integer $ProjectID номер проекта в Sape.ru
     * @return void
     */
-	function __construct( $ProjectID ) {
-        
-        $this->ProjectID = intval($ProjectID);
-        
+	function __construct() {
 	} // End function __counstruct
-    
-    
-    public function SetValue( $Values ) {
         
-        foreach( $Values as $ValueKey => $Value ) {
-            $this->ReportValues[$ValueKey] = $Value;
-        } // End foreach
-        
-    } // End function SetValue
     
-    
+    /**
+    * Отправка отчета
+    * Вызывается из index.php
+    * Пример использования (index.php)
+    * <code>
+    *   $Report->Send();
+    * </code>
+    *
+    * @example index.php Пример использования в index.php
+    *
+    * @access public
+    *
+    * @uses html_mime_mail Mail.class.php для отправки писем
+    *
+    * @return void
+    */
     public function Send() {
+    
+        require_once "Mail.class.php";
+        
         echo "<br><br><strong>Sending report...</strong>";
         
-        require_once "Mail.class.php";
-    
         $mail=new html_mime_mail();
-        $mail->add_html("<html><body>Отчет по проекту " . $this->ProjectID . " сформирован. Результаты во вложении</body></html>");
+        $mail->add_html("<html><body>Отчет по всем проектам сформирован. Результаты во вложении</body></html>");
         foreach( $this->ReportFiles as $file ) {
             $mail->add_attachment("",$file);
         } // End foreach
@@ -59,22 +83,29 @@ class Report {
             'Report'
         );
         
-        /*
-        echo "<pre>";
-        var_dump( $this->ReportFiles );
-        echo "</pre>";
-        
-        echo "<pre>";
-        var_dump( $this->ReportValues );
-        echo "</pre>";
-        */
-        
         echo "<br><strong>Report Sent</strong>";
   
-        
     } // End function Send
 
     
+    /**
+    * Генерация файлов CSV со ссылками для отправки отчета. Сгененрированный файл хранится на сервере, названия файлов хранятся в $this->ReportFiles
+    * Вызывается из index.php
+    * Пример использования (index.php)
+    * <code>
+    *   $Report->GenerateCSV( $StorageTrustedLinks, array( "URL", "Уровень" ), "trusted_" . date("d-m-Y") . ".csv" );
+    * </code>
+    *
+    * @example index.php Пример использования в index.php
+    *
+    * @access public
+    *
+    * @param array $ArrayToCSV массив данных для генерации CSV файла
+    * @param array $TitleString заголовки полей CSV файла
+    * @param string $FileName название файла
+    *
+    * @return void
+    */
     public function GenerateCSV( $ArrayToCSV, $TitleString, $FileName ) {
     
         $fp = fopen($FileName, 'w');
@@ -91,5 +122,6 @@ class Report {
         $this->ReportFiles[] = $FileName;
         
     } // End function GenerateCSV
+    
     
 } // End class Report

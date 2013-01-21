@@ -10,9 +10,7 @@
 *
 * @package SAPE
 * @author Chevanin Valeriy <chevanin@etorg.ru>
- * @todo все включения кофигов в конструктор
- * @todo для алексы добавить порог
- * @todo кэширование там, где регэкспы (преобразование массива в одну большую строку можно делать в более низкоуровневой функции)
+* @todo все включения кофигов в конструктор<br>для алексы добавить порог<br>кэширование там, где регэкспы (преобразование массива в одну большую строку можно делать в более низкоуровневой функции)<br>дать ссылки на Common.config.sample.php и кофиг регэкспов
 */
 
 class LinksFilter {
@@ -99,20 +97,7 @@ class LinksFilter {
         $ErrorLinksIDs = array();
         
         echo "<br><br><strong>Mozrank filtering...</strong>";
-        
-        /*
-        $TrustedLinks = array();
-        $NestingArray = array();
-        $TrustedLinks[] = "http://tunyng.ru/tuning/";
-        $NestingArray[] = 2;
-        $TrustedLinks[] = "http://darogatour.dp.ua/page/3/";
-        $NestingArray[] = 2;
-        $TrustedLinks[] = "http://www.times.spb.ru/?page=13";
-        $NestingArray[] = 2;
-        $TrustedLinks[] = "http://www.fnordex.ru/archives/1621";
-        $NestingArray[] = 2;
-        */
-        
+                
         foreach( $TrustedLinks as $ID => $URL ) {
         
             $URLSEOMozParameters = self::_GetFromSEOMoz( $URL );
@@ -528,33 +513,10 @@ class LinksFilter {
         
         echo "<br>ALEXA BORDER = " . $AlexaPopularityBorder . "<br>";
         
-        /*
-        $TrustedLinks = array();
-        $NestingArray = array();
-        $TrustedLinks[] = "http://confretax.ru/knigi-dlya-deteie/russkie-narodnie-skazki-poteshki.html";
-        $NestingArray[] = 2;
-        $TrustedLinks[] = "http://na-sebya.ru/12-jenskoe-bele-i-odejda-dlya-doma/korrektiruyushie-shorti-esteticlab-hotex-bridji-dlya-poxudeniya-s-ant.html";
-        $NestingArray[] = 2;
-        $TrustedLinks[] = "http://www.hwgroup.ru/magazin?page=shop.product_details&flypage=flypage-ask.tpl&product_id=3303&category_id=33&manufacturer_id=345";
-        $NestingArray[] = 2;
-        $TrustedLinks[] = "http://detsada.net/user/1788/track";
-        $NestingArray[] = 2;
-        */
-        
-
         foreach( $TrustedLinks as $ID => $URL ) {
             
             $URLAlexaPopularity = self::_GetAlexaPopularity($URL);
-            if( $URLAlexaPopularity === false ) {
-                // Продолжаем проверку, если произошла ошибка
-                /*
-                $UnTrustedLinks[] = $URL;
-                $UnTrustedLinksIDs[] = $ID;
-                $UnTrustedLinksReasons[$ID] = "Произошла ошибка при проверке по Alexa.";
-                $ErrorLinksIDs[] = $ID;
-                unset( $TrustedLinks[$ID] );
-                */
-            } elseif( $URLAlexaPopularity == 0 ) {
+            if( ( $URLAlexaPopularity !== false ) && ( $URLAlexaPopularity == 0 ) ) {
                 $UnTrustedLinks[] = $URL;
                 $UnTrustedLinksIDs[] = $ID;
                 $UnTrustedLinksReasons[$ID] = "Не прошла проверку по Alexa";
@@ -728,9 +690,7 @@ class LinksFilter {
         $ch = curl_init();
         
         $URIDomain = PageFilter::GetCommonDomain($URL);
-        //echo $URIDomain . "<br>";
         
-        //$AlexaRequestURL = "http://data.alexa.com/data?cli=10&dat=s&url=".$URL;
         $AlexaRequestURL = "http://data.alexa.com/data?cli=10&dat=s&url=".urlencode($URIDomain);
         
         curl_setopt($ch, CURLOPT_URL, $AlexaRequestURL);
@@ -752,7 +712,7 @@ class LinksFilter {
     
     
     /**
-    * Получение массива ссылок из конфига RegexFilter.class.php
+    * Получение массива "плохих" частей REQUEST_URI из конфига RegexFilter.class.php
     * Вызывается из LinksLoader::FilterRegex()
     *
     * Пример использования

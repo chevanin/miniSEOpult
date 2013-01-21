@@ -10,16 +10,10 @@
 *
 * @package SAPE
 * @author Chevanin Valeriy <chevanin@etorg.ru>
-* @todo Вынести параметры подключения в конфиг
+* @todo Вынести параметры подключения в конфиг<br>[GetDatas] Сделать запрос и вывод $UnTrustedLinks<br>[GetDatas] Сделать запрос и вывод $UnTrustedLinksIDs<br>[GetDatas] Сделать запрос и вывод $UnTrustedLinksReasons<br>дать ссылку на Common.config.sample.php 
 */
 class Storage {
 	
-    /**
-    * ID проекта в sape.ru
-    * @access protected
-    * @var integer
-    */
-    protected $ProjectID = 0;
     /**
     * Массив ссылок
     * @access protected
@@ -38,6 +32,12 @@ class Storage {
     * @var array
     */
     protected $NestingArray = array();
+    /**
+    * Массив идентификаторов проектов для ссылок
+    * @access protected
+    * @var array
+    */
+    protected $LinksProjects = array();
     /**
     * Дескриптор базы
     * @access protected
@@ -63,7 +63,7 @@ class Storage {
     * Вызывается из index.php
     * Пример использования (index.php)
     * <code>
-    *   $Storage = new Storage( $Links, $NestingArray );
+    *   $Storage = new Storage( $Links, $NestingArray, $LinksProjects );
     * </code>
     *
     * Использует mysqli
@@ -73,16 +73,12 @@ class Storage {
     * @example index.php Пример использования в index.php
     * @uses Storage::_FirstTimeSaveLinks() для сохранения ссылок и уровней вложенности в базу
     *
-    * @param integer $ProjectID номер проекта в Sape.ru
     * @param string $Links массив ссылок, получаемых в index.php с помощью LinksLoader::Get()
     * @param string $NestingArray массив уровней вложенности ссылок, получаемых в index.php с помощью LinksLoader::Get()
+    * @param string $LinksProjects массив идентификаторов проектов для ссылок, получаемых в index.php с помощью LinksLoader::Get()
     * @return void
     */
-	function __construct( $ProjectID, $Links, $NestingArray ) {
-        //$this->Links = $Links;
-        //$this->NestingArray = $NestingArray;
-        
-        $this->ProjectID = intval($ProjectID);
+	function __construct( $Links, $NestingArray, $LinksProjects ) {
         
         $this->DBH = new mysqli( 
             $this->ConnectParams['host'], 
@@ -98,7 +94,7 @@ class Storage {
         // Записываем ссылки в базу
         // Можно как-то придумать пропуск в зависимости от входных данных( пустых, например)
         if( ( count( $Links ) > 0 ) && ( count( $NestingArray ) > 0 ) )
-            $this->_FirstTimeSaveLinks( $Links, $NestingArray );
+            $this->_FirstTimeSaveLinks( $Links, $NestingArray, $LinksProjects );
         
 	} // End function __counstruct
     
@@ -116,11 +112,7 @@ class Storage {
     * @example index.php Пример использования в index.php
     * @uses Storage::_GetLinksAndNesting() для запроса на получения данных о неотфильтрованных ссылках и уровнях вложенности к базе
     *
-    * @return array Массив ( $TrustedLinks, $NestingArray, $UnTrustedLinks, $UnTrustedLinksIDs, $UnTrustedLinksReasons ), $TrustedLinks - неотфильтрованные ссылки ( "ID" => "URL" ), $NestingArray - уровень вложенности ( "ID" => "Level" ), $UnTrustedLinks - пока заглушка (пустой массив), $UnTrustedLinksIDs - пока заглушка (пустой массив), $UnTrustedLinksReasons - пока заглушка (пустой массив)
-    *
-    * @todo Сделать запрос и вывод $UnTrustedLinks
-    * @todo Сделать запрос и вывод $UnTrustedLinksIDs
-    * @todo Сделать запрос и вывод $UnTrustedLinksReasons
+    * @return array Массив ( $TrustedLinks, $NestingArray, $LinksProjects, $UnTrustedLinks, $UnTrustedLinksIDs, $UnTrustedLinksReasons ), $TrustedLinks - неотфильтрованные ссылки ( "ID" => "URL" ), $NestingArray - уровень вложенности ( "ID" => "Level" ), $LinksProjects - проекты для ссылок ( "ID ссылки" => "ID проекта" ), $UnTrustedLinks - пока заглушка (пустой массив), $UnTrustedLinksIDs - пока заглушка (пустой массив), $UnTrustedLinksReasons - пока заглушка (пустой массив)
     */
     public function GetDatas() {
     
@@ -131,7 +123,7 @@ class Storage {
         $UnTrustedLinksIDs = array();
         $UnTrustedLinksReasons = array();
         
-        return array( $this->Links, $this->NestingArray, $UnTrustedLinks, $UnTrustedLinksIDs, $UnTrustedLinksReasons );
+        return array( $this->Links, $this->NestingArray, $this->LinksProjects, $UnTrustedLinks, $UnTrustedLinksIDs, $UnTrustedLinksReasons );
         
     } // End function GetDatas
     
@@ -141,7 +133,7 @@ class Storage {
     * Вызывается из Storage::__construct()
     * Пример использования
     * <code>
-    *   $this->_FirstTimeSaveLinks( $Links, $NestingArray );
+    *   $this->_FirstTimeSaveLinks( $Links, $NestingArray, $LinksProjects );
     * </code>
     * Использует mysqli
     * @link http://docs.php.net/manual/ru/book.mysqli.php описание функций mysqli
@@ -150,10 +142,11 @@ class Storage {
     *
     * @param string $Links массив ссылок, передаваемых в конструктор
     * @param string $NestingArray массив уровней вложенности ссылок, передаваемых в конструктор
+    * @param string $LinksProjects идентификаторов проектов для ссылок, передаваемых в конструктор
     * @return void
     *
     */
-    protected function _FirstTimeSaveLinks( $Links, $NestingArray ) {
+    protected function _FirstTimeSaveLinks( $Links, $NestingArray, $LinksProjects ) {
     
         // Записываем ссылки в базу
         $this->DBH->query( "TRUNCATE TABLE links_to_filter" );
@@ -165,10 +158,8 @@ class Storage {
             
             foreach( $Links as $ID => $URL ) {
                 if( isset( $NestingArray[$ID] ) ) {
-                
-                    $stmt->bind_param( 'sii', $URL, $NestingArray[$ID], $this->ProjectID );
+                    $stmt->bind_param( 'sii', $URL, $NestingArray[$ID], $LinksProjects[$ID] );
                     $stmt->execute();
-                    
                 } // End if
             } // End foreach
             
@@ -180,7 +171,7 @@ class Storage {
     
     
     /**
-    * Выполняет запрос на получения данных о неотфильтрованных ссылках и уровнях вложенности к базе и записывает результат в  $this->Links и $this->NestingArray
+    * Выполняет запрос на получения данных о неотфильтрованных ссылках и уровнях вложенности к базе и записывает результат в  $this->Links, $this->NestingArray и $this->LinksProjects
     * Вызывается из Storage::GetDatas()
     * Пример использования
     * <code>
@@ -196,17 +187,8 @@ class Storage {
     */
     protected function _GetLinksAndNesting() {
     
-        // Получаем неотфильтрованные ссылки и уровни вложенности из базы
-        /*
         if( $result = $this->DBH->query( "
-            SELECT id, url, nesting_level
-            FROM links_to_filter
-
-        " ) ) {
-        */
-        
-        if( $result = $this->DBH->query( "
-            SELECT id, url, nesting_level
+            SELECT id, url, nesting_level, project_id
             FROM links_to_filter
             WHERE is_filtered = 'N'
         " ) ) {
@@ -214,6 +196,7 @@ class Storage {
             while( $row = $result->fetch_assoc() ) {
                 $this->Links[$row['id']] = $row['url'];
                 $this->NestingArray[$row['id']] = $row['nesting_level'];
+                $this->LinksProjects[$row['id']] = $row['project_id'];
             } // End while
             
             $result->free();
@@ -341,12 +324,6 @@ class Storage {
         $StorageUnTrustedLinksAPI = array();
         $StorageUnTrustedLinks = array();
         $StorageUnTrustedLinksBL = array();
-        
-        /*
-        echo "<pre>";
-        var_dump( $this->ErrorLinksIDs );
-        echo "</pre>";
-        */
 
         // API
         if( $result = $this->DBH->query( "
@@ -354,15 +331,7 @@ class Storage {
             FROM links_to_filter lf LEFT JOIN links_untrasted lu ON (lu.link_id = lf.id)
         " ) ) {
         
-            while( $row = $result->fetch_assoc() ) {
-                
-                /*
-                echo "<pre>";
-                var_dump( $row );
-                echo "</pre>";
-                */
-                
-                
+            while( $row = $result->fetch_assoc() ) {               
                 if( $row['is_good'] == "Y" ) {
                     $StorageTrustedLinks[$row['id']]['url'] = $row['url'];
                     $StorageTrustedLinks[$row['id']]['level'] = $row['nesting_level'];
@@ -395,42 +364,7 @@ class Storage {
             
         } // End if
         
-        /*
-        // Not API
-        if( $result = $this->DBH->query( "
-            SELECT lf.id, lf.url, lf.nesting_level, lf.is_good, lu.reason
-            FROM links_to_filter lf LEFT JOIN links_untrasted lu ON (lu.link_id = lf.id)
-            WHERE lu.api_log = 'N'
-        " ) ) {
-        
-            while( $row = $result->fetch_assoc() ) {
-                
-                
-                echo "<pre>";
-                var_dump( $row['is_good'] );
-                echo "</pre>";
-                
-                
-                if( $row['is_good'] == "Y" ) {
-                    $StorageTrustedLinks[$row['id']]['url'] = $row['url'];
-                    $StorageTrustedLinks[$row['id']]['level'] = $row['nesting_level'];
-                } else {
-                    $StorageUnTrustedLinks[$row['id']]['url'] = $row['url'];
-                    $StorageUnTrustedLinks[$row['id']]['level'] = $row['nesting_level'];
-                    $StorageUnTrustedLinks[$row['id']]['reason'] = $row['reason'];
-                    
-                    if( !in_array( $row['id'], $this->ErrorLinksIDs ) )
-                        $StorageUnTrustedLinksBL[$row['id']] = $StorageUnTrustedLinks[$row['id']];
-                    
-                } // End if
-            } // End while
-            
-            $result->free();
-            
-        } // End if
-        */
-        
-        $this->_ToBL($this->ProjectID, $StorageUnTrustedLinksBL);
+        $this->_ToBL($StorageUnTrustedLinksBL);
         
         return array( $StorageTrustedLinks, $StorageUnTrustedLinksAPI, $StorageUnTrustedLinks );
         
@@ -442,39 +376,28 @@ class Storage {
     * Вызывается из Storage::GetTrusted()
     * Пример использования Storage::GetTrusted()
     * <code>
-    *   $this->_ToBL($ProjectID, $StorageUnTrustedLinks);
+    *   $this->_ToBL($StorageUnTrustedLinks);
     * </code>
     *
     * @access protected
     *
     * @example Storage::GetTrusted() Пример использования в Storage::GetTrusted()
     *
-    * @param integer $ProjectID идентификатор проекта
     * @param array $UnTrustedLinks массив ссылок для записи в black list с указанием причин
     * @return void
     */
-    protected function _ToBL( $ProjectID, $UnTrustedLinks ) {
+    protected function _ToBL( $UnTrustedLinks ) {
         
         $insert_bl_q = "
             INSERT IGNORE INTO links_bl ( project_id, url, hash, reason ) VALUES ( ?, ?, ?, ? ) 
         ";
         
-        /*
-        $insert_bl_q = "
-            INSERT INTO links_bl ( project_id, url, hash, reason ) VALUES ( ?, ?, ?, ? ) 
-            ON DUPLICATE KEY UPDATE hash = ?
-        ";
-        */
-        
         if( $bl_s = $this->DBH->prepare($insert_bl_q) ) {
-
-            foreach( $UnTrustedLinks as $Link ) {
-            
-                //$bl_s->bind_param( 'issss', $ProjectID, $Link['url'], md5($Link['url']), $Link['reason'], md5($Link['url']) );
-                $bl_s->bind_param( 'isss', $ProjectID, $Link['url'], md5($Link['url']), $Link['reason'] );
+        
+            foreach( $UnTrustedLinks as $ID => $Link ) {                
+                $bl_s->bind_param( 'isss', $this->LinksProjects[$ID], $Link['url'], md5($Link['url']), $Link['reason'] );
                 $bl_s->execute();
-                
-            } // End ofreach
+            } // End foreach
             
             $bl_s->close();
         
@@ -496,11 +419,10 @@ class Storage {
     * @example index.php Пример использования в index.php
     *
     * @param array $TrustedLinks массив ссылок для фильтрации по bl
-    * @param boolean $ForAllProjects использовать ли bl для всех проектов
     * @return array $UntrustedIDs - массив ID-ов непрошедших фильтрацию ссылок
     *
     */
-    public function GetBL( $TrustedLinks, $ForAllProjects = false ) {
+    public function GetBL( $TrustedLinks ) {
     
         $UnTrusted = array();
         
@@ -509,20 +431,11 @@ class Storage {
             $URLHashes[] = "'" . md5($Link) . "'";
         } // End foreach
         
-        if( $ForAllProjects ) {
-            $query = "
-                SELECT id, url, reason
-                FROM links_bl
-                WHERE hash IN (" . implode( ",", $URLHashes ) . ")
-                ";
-        } else {
-            $query = "
-                SELECT id, url, reason
-                FROM links_bl
-                WHERE hash IN (" . implode( ",", $URLHashes ) . ")
-                AND project_id = " . $this->ProjectID . "
-                ";
-        } // End if
+        $query = "
+            SELECT id, url, reason
+            FROM links_bl
+            WHERE hash IN (" . implode( ",", $URLHashes ) . ")
+            ";
         
         if( $result = $this->DBH->query( $query ) ) {
         
